@@ -1,38 +1,51 @@
-# Space Invaders Clustered
+# Space Invaders – Dual Edition Arcade
 
-A sleek, retro-inspired arcade shooter built in Python using the **Pygame** framework. Take control of a futuristic defense ship, dodge incoming enemy plasma, and eliminate waves of escalating alien invaders!
-
----
-
-## 🚀 Features
-
-* **Dynamic Wave Scaling:** Clearing a wave automatically resets the grid with an increased speed modifier for endless progression.
-* **Procedural Retro Sprites:** Features custom vector-drawn art layers for the Player Ship and three distinct types of alien configurations (*Crabs*, *Octopuses*, and *Squids*).
-* **Layered Score Engine:** Destroying higher-tier alien units rewards the player with progressively scaling points.
-* **Ammo Limitations:** Balance your offensive output with a maximum cap of 3 active friendly projectiles on-screen at once.
-* **Atmospheric Starfield:** Includes an integrated parallax particle backdrop to simulate high-speed interstellar movement.
+A retro-inspired, fast-paced arcade shooter project featuring two distinct versions: a hyper-responsive **HTML5/JavaScript Mobile Edition** and a classic **Python/Pygame Desktop Edition**. Take control of a futuristic defense ship, dodge incoming enemy plasma, and eliminate waves of escalating alien invaders!
 
 ---
 
-## 🎮 Controls
+## 🎮 Repository Overview
 
-The game utilizes straightforward keyboard configurations designed for instant accessibility:
+This repository bridges two development ecosystems, providing the same classic gameplay tailored for different devices:
 
-| Action           | Control Configuration                 |
-| :--------------- | :------------------------------------ |
-| **Move Left**    | `Left Arrow Key` / `A`                |
-| **Move Right**   | `Right Arrow Key` / `D`               |
-| **Fire Laser**   | `Spacebar` (Max 3 on screen)          |
-| **Restart Game** | `Spacebar` (Only on Game Over Screen) |
+### 1. HTML5 Mobile Edition (`index.html`)
+* **Platform:** Mobile Browsers (Safari, Chrome) & Desktop Browsers
+* **Optimizations:** Uses a lightweight HTML5 Canvas API running at 60 FPS. Features smooth Linear Interpolation (Lerp) touch-dragging so the ship perfectly tracks your finger on touchscreens. Includes a retro CRT scanline overlay and particle physics explosions.
+
+### 2. Python Desktop Edition (`main.py`)
+* **Platform:** PC / Mac Terminal
+* **Optimizations:** Built on the robust **Pygame** framework. Features unique custom vector-drawn art assets for three distinct alien tiers (*Crabs*, *Octopuses*, and *Squids*) and a randomized starfield backdrop.
+
+---
+
+## 🕹️ Controls & Gameplay
+
+Both games feature dynamic wave scaling—clearing a stage automatically resets the grid with an increased speed modifier for endless progression.
+
+### HTML5 Mobile Controls
+* **Touch/Drag:** Move your finger anywhere on the screen to slide the ship.
+* **Tap:** Tap or lift your finger to fire a laser pulse.
+
+### Desktop Controls (Python & HTML5 Keyboard)
+| Action           | Control Configuration                       |
+| :--------------- | :------------------------------------------ |
+| **Move Left**    | `Left Arrow Key` / `A`                      |
+| **Move Right**   | `Right Arrow Key` / `D`                     |
+| **Fire Laser**   | `Spacebar` (Limited active screen capacity) |
+| **Restart Game** | `Spacebar` or `R` (On Game Over screen)     |
 
 ---
 
 ## 🛠️ Installation & Setup
 
-Follow these steps to configure your local environment and boot up the game application:
+### How to play the Mobile/Web Version
+No installation required! 
+1. Open the `index.html` file directly in any desktop browser, or send it to your mobile phone and open it via **Safari** or **Chrome**.
+2. Alternatively, you can copy the code and paste it into a web sandbox like [CodePen](https://codepen.io/) to play instantly.
 
-### Prerequisites
-Make sure you have **Python 3.x** installed on your operating system. If you don't have Pygame installed yet, run the following pipeline package manager command in your terminal:
+### How to play the Desktop Python Version
+Make sure you have **Python 3.x** installed on your system.
 
-```bash
-pip install pygame
+1. Install the Pygame framework using your terminal:
+   ```bash
+   pip install pygame
