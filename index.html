@@ -3,282 +3,463 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Invaders</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Space Invaders - Endless Horizon</title>
     <style>
+        :root {
+            --neon-green: #00ff66;
+            --neon-red: #ff3366;
+            --neon-blue: #00ffff;
+            --neon-yellow: #ffff33;
+            --dark-bg: #0a0a12;
+        }
+
         body {
             margin: 0;
-            background: #000;
-            color: #0f0;
-            font-family: Arial, sans-serif;
+            padding: 0;
+            background: #050508;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-        }
-
-        h1 {
-            margin: 5px;
-            font-size: 24px;
-        }
-
-        #score {
-            margin-bottom: 10px;
-            font-size: 18px;
-        }
-
-        #game {
-            position: relative;
-            width: 320px;
-            height: 480px;
-            background: #111;
-            border: 2px solid #0f0;
             overflow: hidden;
-            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        #player {
+        .game-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
+            border-radius: 4px;
+        }
+
+        .game-container::after {
+            content: " ";
+            display: block;
             position: absolute;
-            width: 30px;
-            height: 15px;
-            background: #0f0;
-            border-radius: 3px;
-            bottom: 10px;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            aspect-ratio: 2/3;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        .invader {
-            position: absolute;
-            width: 20px;
-            height: 15px;
-            background: #0f0;
-            border-radius: 3px;
+        canvas {
+            background: var(--dark-bg);
+            border: 2px solid var(--neon-green);
+            display: block;
+            max-width: 100vw;
+            max-height: 85vh;
+            aspect-ratio: 2 / 3;
         }
 
-        .bullet {
-            position: absolute;
-            width: 4px;
-            height: 10px;
-            background: #0f0;
-        }
-
-        #message {
-            margin-top: 10px;
-            font-size: 24px;
-            color: #0f0;
-            height: 30px;
+        .ui-panel {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green);
         }
     </style>
 </head>
 
 <body>
 
-    <h1>Space Invaders</h1>
-    <div id="score">Score: 0</div>
-
-    <div id="game">
-        <div id="player"></div>
+    <div class="ui-panel">
+        <div id="scoreDisplay">SCORE: 0000</div>
+        <div id="levelDisplay">STAGE: 1</div>
     </div>
 
-    <div id="message"></div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+    </div>
 
     <script>
-        const game = document.getElementById("game");
-        const player = document.getElementById("player");
-        const scoreEl = document.getElementById("score");
-        const messageEl = document.getElementById("message");
+        class Laser {
+            constructor(x, y, velocityY, color) {
+                this.x = x;
+                this.y = y;
+                this.width = 4;
+                this.height = 15;
+                this.velocityY = velocityY;
+                this.color = color;
+            }
 
-        const GAME_WIDTH = 320;
-        const GAME_HEIGHT = 480;
+            update() {
+                this.y += this.velocityY;
+            }
 
-        let score = 0;
-        let gameRunning = true;
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+            }
+        }
 
-        let playerX = 145;
-        player.style.left = playerX + "px";
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = Math.random() * 2 + 1;
+                this.vx = (Math.random() - 0.5) * 7;
+                this.vy = (Math.random() - 0.5) * 7;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.025 + 0.02;
+                this.color = color;
+            }
 
-        let bullet = null;
-        let bulletX = 0;
-        let bulletY = 0;
-        const bulletSpeed = 8;
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
 
-        const invaders = [];
-        let invaderDirection = 1;
-        let invaderSpeed = 1.2;
-        const invaderStepDown = 15;
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
 
-        const rows = 3;
-        const cols = 8;
+        class Invader {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.width = 28;
+                this.height = 20;
+                this.type = type;
+                this.color = type === 0 ? '#ff3366' : type === 1 ? '#ff9933' : '#00ffff';
+            }
 
-        // Create Invaders
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const el = document.createElement("div");
-                el.className = "invader";
+            draw(ctx, animationFrame) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = this.color;
 
-                const x = 20 + c * 35;
-                const y = 20 + r * 30;
+                ctx.fillRect(this.x, this.y + 4, this.width, this.height - 8);
+                ctx.fillRect(this.x + 6, this.y, this.width - 12, this.height);
 
-                el.style.left = x + "px";
-                el.style.top = y + "px";
+                if (animationFrame) {
+                    ctx.fillRect(this.x, this.y + this.height, 6, 4);
+                    ctx.fillRect(this.x + this.width - 6, this.y + this.height, 6, 4);
+                } else {
+                    ctx.fillRect(this.x + 4, this.y + this.height, 6, 4);
+                    ctx.fillRect(this.x + this.width - 10, this.y + this.height, 6, 4);
+                }
+                ctx.shadowBlur = 0;
+            }
+        }
 
-                game.appendChild(el);
+        class Player {
+            constructor(canvasWidth, canvasHeight) {
+                this.canvasWidth = canvasWidth;
+                this.canvasHeight = canvasHeight;
+                this.width = 36;
+                this.height = 18;
+                this.x = canvasWidth / 2 - this.width / 2;
+                this.y = canvasHeight - 40;
+                this.speed = 10; // Increased keyboard movement speed
+                this.color = '#00ff66';
+            }
 
-                invaders.push({
-                    el,
-                    x,
-                    y,
-                    width: 20,
-                    height: 15
+            move(targetX) {
+                this.x = Math.max(10, Math.min(this.canvasWidth - this.width - 10, targetX));
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width / 2, this.y);
+                ctx.lineTo(this.x + this.width / 2 + 4, this.y + 6);
+                ctx.lineTo(this.x + this.width, this.y + 6);
+                ctx.lineTo(this.x + this.width, this.y + this.height);
+                ctx.lineTo(this.x, this.y + this.height);
+                ctx.lineTo(this.x, this.y + 6);
+                ctx.lineTo(this.x + this.width / 2 - 4, this.y + 6);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+
+                this.scoreDisplay = document.getElementById('scoreDisplay');
+                this.levelDisplay = document.getElementById('levelDisplay');
+
+                this.score = 0;
+                this.level = 1;
+
+                this.initGameGlobal();
+                this.bindInputEvents();
+            }
+
+            initGameGlobal() {
+                this.player = new Player(this.canvas.width, this.canvas.height);
+                this.state = 'RUNNING'; // RUNNING, LEVEL_INTERMISSION, GAME_OVER
+                this.intermissionTimer = 0;
+
+                this.lasers = [];
+                this.particles = [];
+                this.invaders = [];
+
+                // Base Difficulty Settings modified by current level
+                this.invaderDirection = 1;
+                this.baseInvaderSpeed = 0.4 + (this.level * 0.25); // Faster baseline per level
+                this.currentInvaderSpeed = this.baseInvaderSpeed;
+                this.invaderStepDown = 12 + Math.min(this.level, 5); // Drops slightly deeper per level
+
+                this.animationTimer = 0;
+                this.animationFrame = false;
+
+                this.inputState = { left: false, right: false };
+                this.targetPlayerX = this.player.x; // Touch interpolation vector target
+                this.lastFired = 0;
+                this.fireRateLimit = 280; // Slightly improved firing capability
+
+                this.generateInvaders();
+            }
+
+            nextLevelStage() {
+                this.level++;
+                this.levelDisplay.textContent = `STAGE: ${this.level}`;
+                this.state = 'LEVEL_INTERMISSION';
+                this.intermissionTimer = 120; // 2 seconds frame pause space
+            }
+
+            generateInvaders() {
+                const rows = 4;
+                const cols = 8;
+                const spacingX = 42;
+                const spacingY = 32;
+                const offsetX = 35;
+                const offsetY = 50 + Math.min(this.level * 5, 40); // Invaders setup progressively closer
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const x = offsetX + c * spacingX;
+                        const y = offsetY + r * spacingY;
+                        this.invaders.push(new Invader(x, y, r % 3));
+                    }
+                }
+            }
+
+            bindInputEvents() {
+                window.addEventListener('keydown', e => {
+                    if (e.key === 'ArrowLeft' || e.key === 'a') this.inputState.left = true;
+                    if (e.key === 'ArrowRight' || e.key === 'd') this.inputState.right = true;
+                    if (e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        this.firePlayerLaser();
+                    }
+                    if (this.state === 'GAME_OVER' && e.key === 'r') {
+                        this.score = 0;
+                        this.level = 1;
+                        this.scoreDisplay.textContent = "SCORE: 0000";
+                        this.levelDisplay.textContent = "STAGE: 1";
+                        this.initGameGlobal();
+                    }
                 });
-            }
-        }
 
-        function movePlayer(x) {
-            playerX = Math.max(0, Math.min(GAME_WIDTH - 30, x));
-            player.style.left = playerX + "px";
-        }
+                window.addEventListener('keyup', e => {
+                    if (e.key === 'ArrowLeft' || e.key === 'a') this.inputState.left = false;
+                    if (e.key === 'ArrowRight' || e.key === 'd') this.inputState.right = false;
+                });
 
-        function shoot() {
-            if (!gameRunning || bullet) return;
-
-            bullet = document.createElement("div");
-            bullet.className = "bullet";
-
-            bulletX = playerX + 13;
-            bulletY = GAME_HEIGHT - 35;
-
-            bullet.style.left = bulletX + "px";
-            bullet.style.top = bulletY + "px";
-
-            game.appendChild(bullet);
-        }
-
-        function gameOver() {
-            gameRunning = false;
-            messageEl.textContent = "GAME OVER";
-        }
-
-        function winGame() {
-            gameRunning = false;
-            messageEl.textContent = "YOU WIN!";
-        }
-
-        // Keyboard controls
-        window.addEventListener("keydown", e => {
-            if (!gameRunning) return;
-
-            switch (e.key) {
-                case "ArrowLeft":
-                    movePlayer(playerX - 15);
-                    break;
-                case "ArrowRight":
-                    movePlayer(playerX + 15);
-                    break;
-                case " ":
-                case "Spacebar":
+                const handleTouch = (e) => {
+                    if (this.state !== 'RUNNING') return;
                     e.preventDefault();
-                    shoot();
-                    break;
-            }
-        });
+                    const rect = this.canvas.getBoundingClientRect();
+                    const touch = e.touches[0];
+                    const canvasX = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
 
-        // Click to shoot
-        game.addEventListener("click", shoot);
+                    // Instantly direct ship's target coordinate path
+                    this.targetPlayerX = canvasX - this.player.width / 2;
+                };
 
-        // Touch controls
-        game.addEventListener("touchmove", e => {
-            const rect = game.getBoundingClientRect();
-            const x = e.touches[0].clientX - rect.left - 15;
-            movePlayer(x);
-        });
-
-        game.addEventListener("touchend", shoot);
-
-        function updateBullet() {
-            if (!bullet) return;
-
-            bulletY -= bulletSpeed;
-
-            if (bulletY < 0) {
-                bullet.remove();
-                bullet = null;
-                return;
-            }
-
-            bullet.style.top = bulletY + "px";
-
-            for (let i = invaders.length - 1; i >= 0; i--) {
-                const inv = invaders[i];
-
-                const hit =
-                    bulletX >= inv.x &&
-                    bulletX <= inv.x + inv.width &&
-                    bulletY <= inv.y + inv.height &&
-                    bulletY + 10 >= inv.y;
-
-                if (hit) {
-                    inv.el.remove();
-                    invaders.splice(i, 1);
-
-                    bullet.remove();
-                    bullet = null;
-
-                    score += 10;
-                    scoreEl.textContent = "Score: " + score;
-
-                    if (invaders.length === 0) {
-                        winGame();
+                this.canvas.addEventListener('touchstart', (e) => {
+                    handleTouch(e);
+                    this.firePlayerLaser();
+                    if (this.state === 'GAME_OVER') {
+                        this.score = 0;
+                        this.level = 1;
+                        this.scoreDisplay.textContent = "SCORE: 0000";
+                        this.levelDisplay.textContent = "STAGE: 1";
+                        this.initGameGlobal();
                     }
+                }, { passive: false });
 
-                    break;
-                }
+                this.canvas.addEventListener('touchmove', handleTouch, { passive: false });
             }
-        }
 
-        function updateInvaders() {
-            let edgeHit = false;
-
-            for (const inv of invaders) {
-                const nextX = inv.x + invaderSpeed * invaderDirection;
-
-                if (nextX <= 0 || nextX >= GAME_WIDTH - inv.width) {
-                    edgeHit = true;
-                    break;
+            firePlayerLaser() {
+                if (this.state !== 'RUNNING') return;
+                const now = performance.now();
+                if (now - this.lastFired >= this.fireRateLimit) {
+                    this.lasers.push(new Laser(this.player.x + this.player.width / 2, this.player.y, -8, '#00ff66'));
+                    this.lastFired = now;
                 }
             }
 
-            if (edgeHit) {
-                invaderDirection *= -1;
+            spawnExplosion(x, y, color) {
+                for (let i = 0; i < 12; i++) {
+                    this.particles.push(new Particle(x, y, color));
+                }
+            }
 
-                for (const inv of invaders) {
-                    inv.y += invaderStepDown;
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                    rect1.x + rect1.width > rect2.x &&
+                    rect1.y < rect2.y + rect2.height &&
+                    rect1.y + rect1.height > rect2.y;
+            }
 
-                    if (inv.y + inv.height >= GAME_HEIGHT - 40) {
-                        gameOver();
-                        return;
+            update() {
+                // Intermission execution block loop handler
+                if (this.state === 'LEVEL_INTERMISSION') {
+                    this.intermissionTimer--;
+                    if (this.intermissionTimer <= 0) {
+                        this.initGameGlobal(); // Build structural assets for next speed tier
+                    }
+                    return;
+                }
+
+                if (this.state !== 'RUNNING') return;
+
+                // Desktop keyboard linear shifting execution
+                if (this.inputState.left) this.targetPlayerX -= this.player.speed;
+                if (this.inputState.right) this.targetPlayerX += this.player.speed;
+
+                // Hyper-Responsive Linear Interpolation (Lerp) for ultra fast touch movement tracking
+                // (Calculates distance and snaps player to target smoothly without frame drops)
+                let dx = this.targetPlayerX - this.player.x;
+                this.player.move(this.player.x + dx * 0.45);
+
+                this.lasers.forEach((laser, index) => {
+                    laser.update();
+                    if (laser.y < 0) this.lasers.splice(index, 1);
+                });
+
+                this.particles.forEach((p, index) => {
+                    p.update();
+                    if (p.alpha <= 0) this.particles.splice(index, 1);
+                });
+
+                let hitEdge = false;
+                this.animationTimer++;
+                if (this.animationTimer % 25 === 0) this.animationFrame = !this.animationFrame;
+
+                for (const invader of this.invaders) {
+                    invader.x += this.invaderDirection * this.currentInvaderSpeed;
+                    if (invader.x <= 10 || invader.x >= this.canvas.width - invader.width - 10) {
+                        hitEdge = true;
+                    }
+                    if (invader.y + invader.height >= this.player.y) {
+                        this.state = 'GAME_OVER';
                     }
                 }
+
+                if (hitEdge) {
+                    this.invaderDirection *= -1;
+                    this.invaders.forEach(inv => inv.y += this.invaderStepDown);
+                    // Swarm accelerates compounding dynamically as individual units fall
+                    this.currentInvaderSpeed += 0.06;
+                }
+
+                for (let l = this.lasers.length - 1; l >= 0; l--) {
+                    for (let i = this.invaders.length - 1; i >= 0; i--) {
+                        if (this.checkCollision(this.lasers[l], this.invaders[i])) {
+                            this.spawnExplosion(this.invaders[i].x + 14, this.invaders[i].y + 10, this.invaders[i].color);
+                            this.invaders.splice(i, 1);
+                            this.lasers.splice(l, 1);
+                            this.score += 100;
+                            this.scoreDisplay.textContent = `SCORE: ${String(this.score).padStart(4, '0')}`;
+                            break;
+                        }
+                    }
+                }
+
+                // Check if level conditions are successfully satisfied
+                if (this.invaders.length === 0) {
+                    this.nextLevelStage();
+                }
             }
 
-            for (const inv of invaders) {
-                inv.x += invaderSpeed * invaderDirection;
-                inv.el.style.left = inv.x + "px";
-                inv.el.style.top = inv.y + "px";
+            render() {
+                this.ctx.fillStyle = 'rgba(10, 10, 18, 0.25)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.player.draw(this.ctx);
+                this.invaders.forEach(inv => inv.draw(this.ctx, this.animationFrame));
+                this.lasers.forEach(laser => laser.draw(this.ctx));
+                this.particles.forEach(p => p.draw(this.ctx));
+
+                if (this.state === 'LEVEL_INTERMISSION') {
+                    this.drawOverlayText(`STAGE ${this.level} INCOMING`, varColor('--neon-yellow'), 'PREPARE DEFENSES');
+                } else if (this.state === 'GAME_OVER') {
+                    this.drawOverlayText('GAME OVER', varColor('--neon-red'), 'TAP SCREEN TO RESTART');
+                }
+            }
+
+            drawOverlayText(mainText, color, subText) {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.font = 'bold 24px "Courier New"';
+                this.ctx.fillStyle = color;
+                this.ctx.textAlign = 'center';
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = color;
+                this.ctx.fillText(mainText, this.canvas.width / 2, this.canvas.height / 2 - 10);
+
+                this.ctx.font = '13px "Courier New"';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillText(subText, this.canvas.width / 2, this.canvas.height / 2 + 30);
+                this.ctx.shadowBlur = 0;
+            }
+
+            run() {
+                const loop = () => {
+                    this.update();
+                    this.render();
+                    requestAnimationFrame(loop);
+                };
+                requestAnimationFrame(loop);
             }
         }
 
-        function gameLoop() {
-            if (!gameRunning) return;
-
-            updateInvaders();
-            updateBullet();
-
-            requestAnimationFrame(gameLoop);
+        function varColor(varName) {
+            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         }
 
-        // Run
-        gameLoop();
+        const engine = new GameEngine();
+        engine.run();
     </script>
 
 </body>
